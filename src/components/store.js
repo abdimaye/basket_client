@@ -5,6 +5,8 @@ export default class Store extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
+            isLoaded: false,
+            error: '',
             items: [],
             basket: []
         }
@@ -13,26 +15,22 @@ export default class Store extends React.Component {
     }
 
     componentDidMount() {
-        // fetch...
-
-        const result = [
-            {
-                id: 1,
-                name: 'item 1',
-                price: '100'
-            },
-            {
-                id: 2,
-                name: 'item 2',
-                price: '150'
-            }
-        ]
-
-        this.setState({
-            items: result
-        })
-
-        console.log(this.state)
+        fetch("http://localhost:8000/api/v1/products")
+        .then(res => res.json())
+        .then(
+          (result) => {
+            this.setState({
+              isLoaded: true,
+              items: result
+            });
+          },
+          (error) => {
+            this.setState({
+              isLoaded: true,
+              error
+            });
+          }
+        )
     }
 
     addToBasket(item) {
@@ -48,12 +46,10 @@ export default class Store extends React.Component {
         })
 
         if (basketHasItem) {
-            console.log('has item')
             this.setState({
                 basket: basketCopy
             })
         } else {
-            console.log('new item')
             itemCopy.quantity = 1
 
             this.setState({
@@ -80,28 +76,52 @@ export default class Store extends React.Component {
             basket:  newBasket.filter( (el, i) => i !== index)
         })
     }
+
+    increaseBasketItem(index) {
+        let newBasket = [...this.state.basket]
+        newBasket[index].quantity += 1
+        this.setState({
+            basket: newBasket
+        })
+    }
     
     render() {
-        console.log(this.state.items)
-        const { items, basket } = this.state
+        const { items, basket, isLoaded } = this.state
+        let unavailable = '';
+
+        if (isLoaded && items.length == 0) {
+            unavailable = 'Store is currenlty unavailable'
+        }
 
         return (
-            <div>
-                <ul>
-                    {items.map( item => (
-                        <li key={item.id}>{item.name} 
-                            <button
-                                onClick={() => this.addToBasket(item)}
-                            >add</button>
-                        </li> 
-                    ))}
-                </ul>
+            <div className="container">
+                <div className="row">
+                    <div id="store" className="col-md-6">
+                        <h1>Products</h1>
+                        <p>{unavailable}</p>
+                        <ul>
+                            {items.map( item => (
+                                <li key={item.id}>
+                                    {item.name} £{item.price / 100}
+                                    &nbsp;
+                                    <button
+                                        onClick={() => this.addToBasket(item)}
+                                    >+</button>
+                                </li> 
+                            ))}
+                        </ul>
+                    </div>
 
-                <Basket 
-                    items={basket} 
-                    onRemove={ (index) => this.removeFromBasket(index) }
-                    onDelete={ (index) => this.deleteFromBasket( index )}
-                />
+                    <div className="col-md-6">
+                        <h1>Shopping Basket</h1>
+                        <Basket 
+                            items={basket} 
+                            onRemove={ (index) => this.removeFromBasket(index) }
+                            onDelete={ (index) => this.deleteFromBasket(index)}
+                            onAdd={ (index) => this.increaseBasketItem(index) }
+                        />
+                    </div>
+                </div>
             </div>
         )
     }
